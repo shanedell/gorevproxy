@@ -25,8 +25,8 @@ vars:
   SNAPSHOT_CMD: "{{ .TOOL_DIR }}/goreleaser release --config {{ .TMP_DIR }}/goreleaser.yaml --clean --snapshot --skip=publish --skip=sign"
   BUILD_CMD:    "{{ .TOOL_DIR }}/goreleaser build   --config {{ .TMP_DIR }}/goreleaser.yaml --clean --snapshot --single-target"
   RELEASE_CMD:  "{{ .TOOL_DIR }}/goreleaser release --clean --release-notes {{ .CHANGELOG }}"
-  # VERSION:
-  #   sh: git describe --dirty --always --tags
+  VERSION:
+    sh: git describe --dirty --always --tags
 
   # used for install and acceptance testing
   COMPARE_DIR: ./test/compare
