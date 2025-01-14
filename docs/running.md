@@ -52,11 +52,7 @@ Run `gorevproxy`:
 
 Now you should be able to navigate to http://nginx.localhost
 
-### GHCR Docker image
-
-#### Docker
-
-##### Non-compose
+### Docker - Non-compose
 
 This example focuses on running `docker run` commands instead of using `docker compose`.
 
@@ -107,7 +103,7 @@ docker run \
 
 Now you should be able to navigate to http://nginx.localhost
 
-##### Compose
+### Docker - Compose
 
 This example focuses on using `docker compose`.
 
