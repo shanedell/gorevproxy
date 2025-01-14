@@ -1,0 +1,47 @@
+services:
+  uptimekuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 5s
+    networks:
+      - gorevproxy
+  
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 5s
+    networks:
+      - gorevproxy
+
+  gorevproxy:
+    build:
+      context: .
+      dockerfile: debug.Dockerfile
+    image: gorevproxy:debug
+    container_name: gorevproxy
+    depends_on:
+      uptimekuma:
+        condition: service_healthy
+      nginx:
+        condition: service_healthy
+    command: -c /examples/simple.yaml --yaml
+    volumes:
+      - ./examples:/examples
+    ports:
+      - "80:80"
+    networks:
+      - gorevproxy
+
+networks:
+  gorevproxy:
+    driver: bridge

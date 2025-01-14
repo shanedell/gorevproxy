@@ -1,0 +1,9 @@
+bundle/*
+pruned-catalog*
+snapshot/*
+**/example.json
+**/example.yaml
+
+.task
+.tmp
+.tool
