@@ -353,6 +353,7 @@ index_tmp*
 
 # executables
 gorevproxy
+!pkg/gorevproxy
 config.yml
 
 # snapshot directories

@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/shanedell/gorevproxy/pkg"
+	"github.com/shanedell/gorevproxy/pkg/gorevproxy"
 )
 
 var help = "gorevproxy - CLI to spin up Golang Reverse proxy. Configured via JSON or YAML file."
@@ -61,7 +61,7 @@ func main(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	return pkg.Run(&pkg.ProxyArgs{
+	return gorevproxy.Run(&gorevproxy.ProxyArgs{
 		ConfigFile: configFile,
 		ReadJSON:   readJSON,
 		ReadYAML:   readYAML,

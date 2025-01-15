@@ -1,4 +1,4 @@
-package pkg
+package gorevproxy
 
 type ProxyArgs struct {
 	ConfigFile string
