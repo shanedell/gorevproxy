@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-func RunServer() error {
+func RunServer(proxyFunc func(w http.ResponseWriter, r *http.Request)) error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", ReverseProxy)
+	mux.HandleFunc("/", proxyFunc)
 
 	server := &http.Server{
 		Addr:         ":80",
@@ -51,5 +51,5 @@ func Run(args *ProxyArgs) error {
 		return err
 	}
 
-	return RunServer()
+	return RunServer(ReverseProxy)
 }
