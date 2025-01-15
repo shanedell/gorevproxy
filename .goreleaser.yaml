@@ -49,7 +49,6 @@ archives:
     builds:
       - linux-build
 
-  # note: the signing process is depending on tar.gz archives. If this format changes then .github/scripts/apple-signing/*.sh will need to be adjusted
   - id: darwin-archives
     builds:
       - darwin-build

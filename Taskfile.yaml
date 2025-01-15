@@ -7,10 +7,6 @@ vars:
   TOOL_DIR: .tool
   TMP_DIR: .tmp
 
-  # used for changelog generation
-  CHANGELOG: CHANGELOG.md
-  NEXT_VERSION: VERSION
-
   # used for snapshot builds
   OS:
     sh: uname -s | tr '[:upper:]' '[:lower:]'
@@ -32,41 +28,7 @@ vars:
   COMPARE_DIR: ./test/compare
   COMPARE_TEST_IMAGE: centos:8.2.2004
 
-env:
-  SYFT_CHECK_FOR_APP_UPDATE: false
-  GRYPE_CHECK_FOR_APP_UPDATE: false
-
 tasks:
-
-  ## High-level tasks #################################
-
-  default:
-    desc: Run all validation tasks
-    aliases:
-      - pr-validations
-      - validations
-    cmds:
-      - task: static-analysis
-      - task: test
-      - task: install-test
-
-  static-analysis:
-    desc: Run all static analysis tasks
-    cmds:
-      - task: check-go-mod-tidy
-      - task: check-licenses
-      - task: lint
-      - task: validate-cyclonedx-schema
-# TODO: while developing v6, we need to disable this check (since v5 and v6 are imported in the same codebase)
-#      - task: validate-grype-db-schema
-
-  test:
-    desc: Run all levels of test
-    cmds:
-      - task: unit
-      - task: integration
-      - task: cli
-
   ## Bootstrap tasks #################################
 
   binny:
@@ -100,12 +62,6 @@ tasks:
       - "{{ .TOOL_DIR }}/*"
     cmd: "{{ .TOOL_DIR }}/binny update -v"
     silent: true
-
-  update-quality-gate-db:
-    desc: Update pinned version of quality gate database
-    cmds:
-      - cmd: "go run cmd/grype/main.go db list -o json | jq -r .[0].url > test/quality/test-db-url"
-        silent: true
 
   list-tools:
     desc: List all tools needed for CI and local development
@@ -160,164 +116,6 @@ tasks:
       # run linting
       - "{{ .TOOL_DIR }}/golangci-lint run --tests=false"
 
-  check-licenses:
-    # desc: Ensure transitive dependencies are compliant with the current license policy
-    deps: [tools]
-    cmd: "{{ .TOOL_DIR }}/bouncer check ./..."
-
-  check-go-mod-tidy:
-    # desc: Ensure go.mod and go.sum are up to date
-    cmds:
-      - cmd: .github/scripts/go-mod-tidy-check.sh && echo "go.mod and go.sum are tidy!"
-        silent: true
-
-  validate-cyclonedx-schema:
-    desc: Run integration tests
-    cmds:
-      - "cd schema/cyclonedx && make"
-
-  validate-grype-db-schema:
-    desc: Ensure the codebase is only referencing a single grype-db schema version (multiple is not allowed)
-    cmds:
-      - python test/validate-grype-db-schema.py
-
-
-  ## Testing tasks #################################
-
-  unit:
-    desc: Run unit tests
-    deps:
-      - tmpdir
-    vars:
-      TEST_PKGS:
-        sh: "go list ./... | grep -v {{ .OWNER }}/{{ .PROJECT }}/test | grep -v {{ .OWNER }}/{{ .PROJECT }}/internal/test | tr '\n' ' '"
-
-      # unit test coverage threshold (in % coverage)
-      COVERAGE_THRESHOLD: 47
-    cmds:
-      - "go test -coverprofile {{ .TMP_DIR }}/unit-coverage-details.txt {{ .TEST_PKGS }}"
-      - cmd: ".github/scripts/coverage.py {{ .COVERAGE_THRESHOLD }} {{ .TMP_DIR }}/unit-coverage-details.txt"
-        silent: true
-
-  integration:
-    desc: Run integration tests
-    cmds:
-      - "go test -v ./test/integration"
-      # exercise most of the CLI with the data race detector
-      - "go run -race cmd/{{ .PROJECT }}/main.go alpine:latest"
-
-  cli:
-    desc: Run CLI tests
-    # note: we don't want to regenerate the snapshot unless we have to. In CI it's probable
-    # that the cache being restored with the correct binary will be rebuilt since the timestamps
-    # and local checksums will not line up.
-    deps: [tools, snapshot]
-    sources:
-      - "{{ .SNAPSHOT_BIN }}"
-      - ./test/cli/**
-      - ./**/*.go
-    cmds:
-      - cmd: "echo 'testing binary: {{ .SNAPSHOT_BIN }}'"
-        silent: true
-
-      - cmd: "test -f {{ .SNAPSHOT_BIN }} || (find {{ .SNAPSHOT_DIR }} && echo '\nno snapshot found' && false)"
-        silent: true
-
-      - "go test -count=1 -timeout=15m -v ./test/cli"
-
-  quality:
-    desc: Run quality tests
-    cmds:
-      - "cd test/quality && make"
-
-
-  ## Test-fixture-related targets #################################
-
-  fingerprints:
-    desc: Generate test fixture fingerprints
-    generates:
-      - test/integration/test-fixtures/cache.fingerprint
-      - test/install/cache.fingerprint
-      - test/cli/test-fixtures/cache.fingerprint
-    cmds:
-      # for IMAGE integration test fixtures
-      - "cd test/integration/test-fixtures && make cache.fingerprint"
-      # for INSTALL integration test fixtures
-      - "cd test/install && make cache.fingerprint"
-      # for CLI test fixtures
-      - "cd test/cli/test-fixtures && make cache.fingerprint"
-
-  show-test-image-cache:
-    silent: true
-    cmds:
-      - "echo '\nDocker daemon cache:'"
-      - "docker images --format '{{`{{.ID}}`}} {{`{{.Repository}}`}}:{{`{{.Tag}}`}}' | grep stereoscope-fixture- | sort"
-      - "echo '\nTar cache:'"
-      - 'find . -type f -wholename "**/test-fixtures/snapshot/*" | sort'
-
-
-  ## install.sh testing targets #################################
-
-  install-test:
-    cmds:
-      - "cd test/install && make"
-
-  install-test-cache-save:
-    cmds:
-      - "cd test/install && make save"
-
-  install-test-cache-load:
-    cmds:
-      - "cd test/install && make load"
-
-  install-test-ci-mac:
-    cmds:
-      - "cd test/install && make ci-test-mac"
-
-  generate-compare-file:
-    cmd: "go run ./cmd/{{ .PROJECT }} {{ .COMPARE_TEST_IMAGE }} -o json > {{ .COMPARE_DIR }}/test-fixtures/acceptance-{{ .COMPARE_TEST_IMAGE }}.json"
-
-  compare-mac:
-    deps: [tmpdir]
-    cmd: |
-      {{ .COMPARE_DIR }}/mac.sh \
-        {{ .SNAPSHOT_DIR }} \
-        {{ .COMPARE_DIR }} \
-        {{ .COMPARE_TEST_IMAGE }} \
-        {{ .TMP_DIR }}
-
-  compare-linux:
-    cmds:
-      - task: compare-test-deb-package-install
-      - task: compare-test-rpm-package-install
-
-  compare-test-deb-package-install:
-    deps: [tmpdir]
-    cmd: |
-      {{ .COMPARE_DIR }}/deb.sh \
-        {{ .SNAPSHOT_DIR }} \
-        {{ .COMPARE_DIR }} \
-        {{ .COMPARE_TEST_IMAGE }} \
-        {{ .TMP_DIR }}
-
-  compare-test-rpm-package-install:
-    deps: [tmpdir]
-    cmd: |
-      {{ .COMPARE_DIR }}/rpm.sh \
-        {{ .SNAPSHOT_DIR }} \
-        {{ .COMPARE_DIR }} \
-        {{ .COMPARE_TEST_IMAGE }} \
-        {{ .TMP_DIR }}
-
-
-  ## Code and data generation targets #################################
-
-  generate:
-    desc: Run data generation tasks
-    cmds:
-      - "cd grype/internal && go generate"
-
-
   ## Build-related targets #################################
 
   build:
@@ -353,34 +151,13 @@ tasks:
 
       - "{{ .SNAPSHOT_CMD }}"
 
-  changelog:
-    desc: Generate a changelog
-    deps: [tools]
-    generates:
-      - "{{ .CHANGELOG }}"
-      - "{{ .NEXT_VERSION }}"
-    cmds:
-      - "{{ .TOOL_DIR }}/chronicle -vv -n --version-file {{ .NEXT_VERSION }} > {{ .CHANGELOG }}"
-      - "{{ .TOOL_DIR }}/glow {{ .CHANGELOG }}"
-
-
-  ## Release targets #################################
-
-  release:
-    desc: Create a release
-    interactive: true
-    deps: [tools]
-    cmds:
-      - cmd: .github/scripts/trigger-release.sh
-        silent: true
-
-
   ## CI-only targets #################################
 
   ci-check:
     # desc: "[CI only] Are you in CI?"
     cmds:
-      - cmd: .github/scripts/ci-check.sh
+      - cmd: |
+          [[ -z $$CI ]] && (echo "This step should ONLY be run in CI. Exiting..."; exit 1;) || true
         silent: true
 
   ci-release:
@@ -388,33 +165,7 @@ tasks:
     deps: [tools]
     cmds:
       - task: ci-check
-      - "{{ .TOOL_DIR }}/chronicle -vvv > CHANGELOG.md"
-      - cmd: "cat CHANGELOG.md"
-        silent: true
       - "{{ .RELEASE_CMD }}"
-
-  ci-release-version-file:
-    # desc: "[CI only] Update the version file"
-    deps: [tools]
-    cmds:
-      - task: ci-check
-      - ".github/scripts/update-version-file.sh {{ .RELEASE_VERSION }}"
-    requires:
-      vars:
-        - RELEASE_VERSION
-
-  ci-validate-test-config:
-    # desc: "[CI only] Ensure the update URL is not overridden (not pointing to staging)"
-    silent: true
-    cmd: |
-      bash -c '\
-        grep -q "update-url" test/grype-test-config.yaml; \
-        if [ $? -eq 0 ]; then \
-          echo "Found \"update-url\" in CLI testing config. Cannot release if previous CLI testing did not use production (default) values"; \
-        else
-          echo "Test configuration valid"
-        fi'
-
 
   ## Cleanup targets #################################
 
