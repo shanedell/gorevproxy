@@ -29,4 +29,4 @@ type ServersType struct {
 type readFuncType func(fileData []byte) error
 
 var readFunc readFuncType
-var config *ServersType
+var Config *ServersType

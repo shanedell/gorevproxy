@@ -42,9 +42,9 @@ func Run(args *ProxyArgs) error {
 	}
 
 	if args.ReadJSON {
-		readFunc = readJSON
+		readFunc = ReadJSON
 	} else {
-		readFunc = readYAML
+		readFunc = ReadYAML
 	}
 
 	if err := readFunc(data); err != nil {

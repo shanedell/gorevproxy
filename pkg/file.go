@@ -6,16 +6,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func readJSON(fileData []byte) error {
-	if err := json.Unmarshal(fileData, &config); err != nil {
+func ReadJSON(fileData []byte) error {
+	if err := json.Unmarshal(fileData, &Config); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func readYAML(fileData []byte) error {
-	if err := yaml.Unmarshal(fileData, &config); err != nil {
+func ReadYAML(fileData []byte) error {
+	if err := yaml.Unmarshal(fileData, &Config); err != nil {
 		return err
 	}
 

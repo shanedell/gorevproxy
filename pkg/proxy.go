@@ -12,13 +12,13 @@ func ReverseProxy(w http.ResponseWriter, r *http.Request) {
 	serverNames := []string{}
 	serverIndexNames := map[string]int{}
 
-	for i, server := range config.Servers {
+	for i, server := range Config.Servers {
 		serverNames = append(serverNames, server.Name)
 		serverIndexNames[server.Name] = i
 	}
 
 	if slices.Contains(serverNames, r.Host) {
-		server := config.Servers[serverIndexNames[r.Host]]
+		server := Config.Servers[serverIndexNames[r.Host]]
 
 		path := r.URL.Path
 
