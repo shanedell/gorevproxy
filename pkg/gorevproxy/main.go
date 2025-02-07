@@ -7,14 +7,18 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/shanedell/goutils/env"
 )
 
 func RunServer(proxyFunc func(w http.ResponseWriter, r *http.Request)) error {
+	port := env.GetString("PROXY_PORT", "80")
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", proxyFunc)
 
 	server := &http.Server{
-		Addr:         ":80",
+		Addr:         fmt.Sprintf(":%s", port),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
