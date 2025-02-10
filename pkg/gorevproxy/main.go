@@ -1,6 +1,7 @@
 package gorevproxy
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -11,11 +12,21 @@ import (
 	"github.com/shanedell/goutils/env"
 )
 
+func Healthcheck(w http.ResponseWriter, _ *http.Request) {
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"status": 200,
+	}); err != nil {
+		http.Error(w, fmt.Sprintf("failed to encode healthcheck json: %s", err), http.StatusBadRequest)
+		return
+	}
+}
+
 func RunServer(proxyFunc func(w http.ResponseWriter, r *http.Request)) error {
 	port := env.GetString("PROXY_PORT", "80")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", proxyFunc)
+	mux.HandleFunc("/healthcheck", Healthcheck)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
